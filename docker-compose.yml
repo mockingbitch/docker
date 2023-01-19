@@ -1,0 +1,76 @@
+
+version: "3"
+
+services:
+  nginx:
+    dns:
+      - 8.8.8.8
+      - 4.4.4.4
+    build:
+      context: ./docker/images
+      dockerfile: NGINX.Dockerfile
+    working_dir: /var/www/html/docker-socialnetwork
+    container_name: nginx_socialnetwork
+    ports:
+      - "8080:80"
+    volumes:
+      - .:/var/www/html/docker-socialnetwork
+      - ./docker/logs/nginx_log:/var/log/nginx
+      - ./docker/config/nginx/socialnetwork/app.conf:/etc/nginx/conf.d/socialnetwork.conf
+      # - ./config/nginx/project2.conf:/etc/nginx/conf.d/project2.conf
+    links:
+      - php
+      - mysql
+    networks:
+      - app-network
+  php:
+    build:
+      context: ./docker/images
+      dockerfile: PHP.Dockerfile
+    container_name: php_socialnetwork
+    volumes:
+      - .:/var/www/html/docker-socialnetwork
+      - ./docker/logs/php_fpm_log:/var/log/php-fpm
+      - ./docker/config/php-fpm/custom.ini:/usr/local/etc/php/conf.d/custom.ini
+    networks:
+      - app-network
+
+  # mysql:
+  #   build:
+  #     context: ./docker/images
+  #     dockerfile: MYSQL.Dockerfile
+  #   container_name: mysql_socialnetwork
+  #   ports:
+  #     - "3306:3306"
+  #   volumes:
+  #     - ./docker/data/mysql:/var/lib/mysql
+  #   environment:
+  #     MYSQL_DATABASE: ${DB_DATABASE}
+  #     MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+  #     MYSQL_PASSWORD: ${DB_PASSWORD}
+  #     MYSQL_USER: ${DB_USERNAME}
+  #     SERVICE_TAGS: dev
+  #     SERVICE_NAME: mysql
+  #   expose:
+  #     - '3306'
+  #   restart: unless-stopped
+  #   networks:
+  #     - app-network
+  mysql:
+    image: mysql:5.7
+    container_name: mysql_socialnetwork
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      # MYSQL_USER: ${DB_USERNAME}
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - ./docker/mysql:/docker-entrypoint-initdb.d
+    networks:
+      - app-network
+networks:
+  app-network:
+    driver: bridge
