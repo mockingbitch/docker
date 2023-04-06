@@ -20,7 +20,7 @@ Về lý thuyết của docker thì các bạn có thể xem <a href="https://do
 - Các bạn sẽ không cần phải cài php, mysql hay nginx. Chỉ cần với docker, nó sẽ cân tất giúp bạn.
 - Đầu tiên, chúng ta cần clone project laravel về. Hoặc các bạn có thể setup 1 project Laravel mới.
 - Tiếp theo, tạo 1 folder docker và các thư mục con để chứa config của docker:
-``
+```
 docker
         |-- config
         |   |-- nginx
@@ -42,4 +42,4 @@ docker
         |   |   |-- error.log
         |   |-- php_fpm_log
         |-- mysql
-``
+```
