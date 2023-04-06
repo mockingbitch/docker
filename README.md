@@ -212,3 +212,24 @@ networks:
     driver: bridge
 ```
 
+- Trong file .env cũng cần phải sửa lại DB_HOST thành tên của service mysql trong docker-compose.yml . Ở trên mình đang để là mysql nên DB_HOST = mysql . Cần thêm cả DB_PASSWORD nữa nhé. :v
+Build project:
+Chúng ta sẽ sử dụng Docker Compose để build project này. Các bạn có thể sử dụng terminal/command prompt để chạy câu lệnh: ```docker compose up --build``` để build project. Sau khi build thành công, sẽ có 3 container được tạo ra theo container_name các bạn đặt ở trong docker-compose.yml . Các bạn có thể sử dụng terminal/command prompt hoặc Docker Desktop để quản lý chúng. Ở đây mình sẽ sử dụng terminal nhé. :v
+Để check các container status chúng ta có câu lệnh ```docker ps -a```
+Để thực thi/xử lý 1 container: ```docker exec -it + 3 ký tự đầu của container id + bash``` VD: ```docker exec -it 1ab bash```
+Để check ip của container: ```docker inspect abc | grep "IP"``` hoặc nếu dùng command prompt thì ```docker inspect abc``` và bạn ctrl + F IP.
+Nếu build thành công rồi thì về cơ bản là đã hoàn thành việc đóng gói. Tuy nhiên, để dễ dàng truy cập vào project thì chúng ta có thể rewrite host name.
+- Ở Ubuntu/Linux/MacOs: Các bạn sử dụng sudo và edit file hosts ```sudo nano /etc/hosts``` Ở hộp thoại mở ra, các bạn thêm tên host các bạn mới config trong file app.conf lúc nãy vào:
+
+```
+127.0.0.1 project1.docker www.project1.docker
+```
+- Ở Window: chạy notepad với quyền admin, mở file host tại C:\Windows\System32\Drivers\etc và sửa tương tự như trên.
+
+Sử dụng:
+- Tất cả đã được setup. Chúng ta có thể truy cập vào project thông qua http://project1.docker:8080 . Lưu ý, port 8080 là cổng đã được ánh xạ ở trong file docker-compose.yml . Nếu cổng đã bị trùng thì có thể sửa lại ở docker-compose.yml và build lại.
+- Để setup database bằng migration hoặc chạy composer update, ta cần phải exec container php_project1 bằng command: ```docker exec -it container_id bash``` . Và tiếp theo là có thể chạy lệnh ```php artisan migrate``` như thường.
+Gợi ý: Để truy cập vào database dễ dàng hơn chúng ta có thể download adminer và cho thẳng vào folder project. Thêm config nginx tương tự và ánh xạ trong docker-compose.yml. Khi truy cập vào DB thì chỉ cần sử dụng IP của container mysql + username + password đã setup.
+
+Kết luận:
+Đây là 1 trong những cách Dockerize Laravel đơn giản đã được mình tóm gọn lại. Bạn có thể setup theo nhiều cách tùy theo dự án của bạn. Chúc các bạn may mắn ra khơi cùng Docker!
