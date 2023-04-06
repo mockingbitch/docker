@@ -1,19 +1,17 @@
-Dockerize ứng dụng Laravel ─ Biện pháp triển khai, quản lý version Laravel đơn giản
-
-Đặt vấn đề:
+### **Đặt vấn đề:**
 - Một bạn fresher tên Tòn vừa mới join vào dự án, cậu ấy được add vào trong dự án và được leader yêu cầu clone project về và build trên máy cá nhân. Tuy nhiên, khi build thì Tòn lại fail liên tục. Mỗi lần build thì lại return lỗi version. Rồi cu cậu lại phải loay hoay đi tìm version của từng package để cài đặt trên máy. Sau 7749 lần download những thứ mà Tòn còn chẳng biết là thứ gì thì cu cậu cũng đã setup được project cho nó chạy mặc dù cài xong vẫn cấn cấn tay. Không biết khi nào nó fail tiếp.
 - Bẵng đi một thời gian, Tòn được add thêm vào 1 dự án khác. Tuy nhiên, dự án này lại phải cài đặt version php, mysql, laravel khác so với project cũ. Và lần này thì cậu ta hoang mang tột độ vì sợ sau khi cài project mới thì project cũ sẽ chết do sai version.
 - Lại tiếp tục vào 1 khoảng thời gian sau đó, Tòn lại gặp phải 1 ông khách khó tính. Ổng yêu cầu Tòn phải cài project trên máy tính cá nhân của ổng. Và lúc này cu cậu lại phải đi mò lại 7749 thứ kia để install.
 
 Từ sau những lần gặp vấn đề đó, Tòn bắt đầu suy nghĩ. Nếu có 1 công cụ có thể "đóng gói" cái project của mình lại thì sẽ tiện lợi hơn rất nhiều. Mỗi lần di chuyển thì chỉ cần chuyển cả cái "gói" đó đi. Sau nhiều lần research thì Tòn đã biết đến sự tồn tại của 1 thứ tên là Docker.
 
-Docker là gì?
+### **Docker là gì?**
 - Về cơ bản thì Docker là người đóng tàu. Chúng ta sẽ phải thuê mấy thằng đóng tàu này vận chuyển các "thùng hàng" (container) lên 1 con tàu. Khi tàu đủ hàng thì sẽ được đi vận chuyển. Và khi cập bến đỗ mới thì về cơ bản nó đã có đầy đủ những thùng hàng cần có để sử dụng rồi.
 Cơ sở lý thuyết của Dockerize Laravel:
 Laravel là 1 framework php có thể tương tác với cơ sở dữ liệu SQL và phải cần có server để chạy. Vậy nên đối với một project Laravel thông thường sẽ phải bao gồm: SQL, PHP, Server.
 Ở đây, mình sẽ sử dụng Mysql, PHP version 8.1, Server thì mình sẽ sử dụng Nginx
 
-Setup
+### **Setup:**
 - Trước hết, chúng ta cần phải install Docker. Các bạn có thể xem link install <a href="https://docs.docker.com/engine/install/">tại đây</a>.
 Về lý thuyết của docker thì các bạn có thể xem <a href="https://docs.docker.com/get─started/">tại đây </a>.
 Ở bài này mình chỉ hướng dẫn cách setup docker cho project Laravel thôi nhé.
@@ -89,19 +87,19 @@ server {
 
 - Chúng ta cần phải viết Dockerfile để pull các images từ dockerhub về. Ở đây mình sẽ tách làm 3 files là MYSQL.Dockerfile, NGINX.Dockerfile, PHP.Dockerfile.
 Tất cả đều được đặt ở thư mục docker/images.
-+ MYSQL.Dockerfile:
++ **MYSQL.Dockerfile**:
 
 ```
 FROM mysql:5.7 #ở đây mình sử dụng version mysql là 5.7, các bạn có thể thay đổi tùy dự án
 ```
 
-+ NGINX.Dockerfile:
++ **NGINX.Dockerfile**:
 
 ```
 FROM nginx:latest #Đối với server nginx thì mình sẽ pull version mới nhất
 ```
 
-+ PHP.Dockerfile:
++ **PHP.Dockerfile**:
 
 ```
 FROM php:8.1-fpm
@@ -147,7 +145,7 @@ COPY --chown=www:www . /var/www
 USER www
 ```
 
-- Và cuối cùng là tạo 1 file docker-compose.yml ở cùng cấp với folder docker vừa tạo (file docker-compose và .env nên cùng cấp với nhau):
+- Và cuối cùng là tạo 1 file docker-compose.yml ở cùng cấp với folder docker vừa tạo (file docker-compose và .env nên cùng cấp với nhau) :
 
 ```
 version: "3"
@@ -215,25 +213,22 @@ networks:
 
 - Trong file .env cũng cần phải sửa lại DB_HOST thành tên của service mysql trong docker-compose.yml . Ở trên mình đang để là mysql nên DB_HOST = mysql . Cần thêm cả DB_PASSWORD nữa nhé. :v
 
-Build project:
+### **Build project**:
 
 Chúng ta sẽ sử dụng Docker Compose để build project này. Các bạn có thể sử dụng terminal/command prompt để chạy câu lệnh: ```docker compose up --build``` để build project. Sau khi build thành công, sẽ có 3 container được tạo ra theo container_name các bạn đặt ở trong docker-compose.yml . Các bạn có thể sử dụng terminal/command prompt hoặc Docker Desktop để quản lý chúng. Ở đây mình sẽ sử dụng terminal nhé. :v
 Để check các container status chúng ta có câu lệnh ```docker ps -a```
 Để thực thi/xử lý 1 container: ```docker exec -it + 3 ký tự đầu của container id + bash``` VD: ```docker exec -it 1ab bash```
 Để check ip của container: ```docker inspect abc | grep "IP"``` hoặc nếu dùng command prompt thì ```docker inspect abc``` và bạn ctrl + F IP.
 Nếu build thành công rồi thì về cơ bản là đã hoàn thành việc đóng gói. Tuy nhiên, để dễ dàng truy cập vào project thì chúng ta có thể rewrite host name.
-- Ở Ubuntu/Linux/MacOs: Các bạn sử dụng sudo và edit file hosts ```sudo nano /etc/hosts``` Ở hộp thoại mở ra, các bạn thêm tên host các bạn mới config trong file app.conf lúc nãy vào:
+- Ở **Ubuntu/Linux/MacOs**: Các bạn sử dụng sudo và edit file hosts ```sudo nano /etc/hosts``` Ở hộp thoại mở ra, các bạn thêm tên host các bạn mới config trong file app.conf lúc nãy vào:
 
 ```
 127.0.0.1 project1.docker www.project1.docker
 ```
-- Ở Window: chạy notepad với quyền admin, mở file host tại C:\Windows\System32\Drivers\etc và sửa tương tự như trên.
+- Ở** Window**: chạy notepad với quyền admin, mở file host tại ```C:\Windows\System32\Drivers\etc``` và sửa tương tự như trên.
 
-Sử dụng:
+### **Sử dụng:**
 - Tất cả đã được setup. Chúng ta có thể truy cập vào project thông qua http://project1.docker:8080 . Lưu ý, port 8080 là cổng đã được ánh xạ ở trong file docker-compose.yml . Nếu cổng đã bị trùng thì có thể sửa lại ở docker-compose.yml và build lại.
 - Để setup database bằng migration hoặc chạy composer update, ta cần phải exec container php_project1 bằng command: ```docker exec -it container_id bash``` . Và tiếp theo là có thể chạy lệnh ```php artisan migrate``` như thường.
 Gợi ý: Để truy cập vào database dễ dàng hơn chúng ta có thể download adminer và cho thẳng vào folder project. Thêm config nginx tương tự và ánh xạ trong docker-compose.yml. Khi truy cập vào DB thì chỉ cần sử dụng IP của container mysql + username + password đã setup.
-
-Kết luận:
-Đây là 1 trong những cách Dockerize Laravel đơn giản đã được mình tóm gọn lại. Bạn có thể setup theo nhiều cách tùy theo dự án của bạn. Chúc các bạn may mắn ra khơi cùng Docker!
-Link source code để các bạn tham khảo: https://github.com/mockingbitch/docker
+- Những lần sau đó, khi muốn chạy docker chúng ta chỉ việc sử dụng câu lệnh: ```docker compose up -d``` . Hoặc nếu bạn đặt file docker-compose.yml và .env không cùng cấp với nhau thì câu lệnh sẽ là ```docker compose --env-file path_file_.env up -d```
