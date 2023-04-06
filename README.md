@@ -19,12 +19,12 @@ Về lý thuyết của docker thì các bạn có thể xem <a href="https://do
 Ở bài này mình chỉ hướng dẫn cách setup docker cho project Laravel thôi nhé.
 ─ Các bạn sẽ không cần phải cài php, mysql hay nginx. Chỉ cần với docker, nó sẽ cân tất giúp bạn.
 ─ Đầu tiên, chúng ta cần clone project laravel về. Hoặc các bạn có thể setup 1 project Laravel mới.
-─ Tiếp theo, tạo 1 folder docker và các thư mục con để chứa config của docker:
+─ Tiếp theo, tạo 1 folder docker trong thư mục Laravel và các thư mục con để chứa config của docker:
 ```
 docker
     │── config
     │   │── nginx
-    │   │   │── socialnetwork
+    │   │   │── project1
     │   │       │── app.conf
     │   │── php─fpm
     │       │── custom.ini
@@ -43,3 +43,172 @@ docker
     │   │── php_fpm_log
     │── mysql
 ```
+
+- Tiếp theo đó, chúng ta sẽ phải tạo file config của nginx trong thư mục docker/config/nginx , tại đây các bạn tạo 1 folder tên của project và 1 file app.conf nằm trong folder đó. Sau đó copy đoạn config sau vào file app.conf :
+
+```
+server {
+    listen   80; ## listen for ipv4; this line is default and implied
+
+    root /var/www/html/project1/public;
+    index index.php index.html index.htm;
+
+    server_name project1.docker www.project1.docker; ##Server name dùng để rewrite host thay vì sử dụng localhost
+
+    gzip on;
+    gzip_min_length 10240;
+    gzip_proxied expired no-cache no-store private auth;
+    gzip_types text/plain text/css text/xml application/json text/javascript application/x-javascript application/xml;
+    gzip_disable "MSIE [1-6]\.";
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        try_files $uri $uri/ /index.php?$query_string;
+        fastcgi_pass php:9000;
+        fastcgi_index index.php;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param PATH_INFO $fastcgi_path_info;
+    }
+
+        location ~* \.(jpg|jpeg|gif|png|css|js|ico|xml)$ {
+                expires           5d;
+        }
+
+    location ~ /\. {
+            log_not_found off;
+            deny all;
+    }
+
+}
+```
+
+- Chúng ta cần phải viết Dockerfile để pull các images từ dockerhub về. Ở đây mình sẽ tách làm 3 files là MYSQL.Dockerfile, NGINX.Dockerfile, PHP.Dockerfile.
+Tất cả đều được đặt ở thư mục docker/images.
++ MYSQL.Dockerfile:
+
+```
+FROM mysql:5.7 #ở đây mình sử dụng version mysql là 5.7, các bạn có thể thay đổi tùy dự án
+```
+
++ NGINX.Dockerfile:
+
+```
+FROM nginx:latest #Đối với server nginx thì mình sẽ pull version mới nhất
+```
+
++ PHP.Dockerfile:
+
+```
+FROM php:8.1-fpm
+
+RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+
+RUN apt-get update \
+    && apt-get install -y \
+    libzip-dev \
+    zip \
+    vim \
+    unzip \
+    git \
+    curl \
+    && docker-php-ext-install zip pdo pdo_mysql
+
+# RUN chown -R www-data:www-data /var/www
+
+# RUN chmod -R 777 /var/www/html/docker-socialnetwork/storage
+# Clear cache
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install extensions
+
+RUN docker-php-ext-install pdo_mysql zip exif pcntl
+# RUN docker-php-ext-configure gd --with-freetype --with-jpeg
+# RUN docker-php-ext-install gd
+
+# Install composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+# Add user for laravel application
+RUN groupadd -g 1000 www
+RUN useradd -u 1000 -ms /bin/bash -g www www
+
+# Copy existing application directory contents
+COPY . /var/www
+
+# Copy existing application directory permissions
+COPY --chown=www:www . /var/www
+
+# Change current user to www
+USER www
+```
+
+- Và cuối cùng là tạo 1 file docker-compose.yml ở cùng cấp với folder docker vừa tạo (file docker-compose và .env nên cùng cấp với nhau):
+
+```
+version: "3"
+
+services:
+  nginx:
+    dns:
+      - 8.8.8.8
+      - 4.4.4.4
+    build:
+      context: ./docker/images
+      dockerfile: NGINX.Dockerfile # gọi tới file NGINX.Dockerfile trong thư mục docker/images để pull image Nginx:latest từ Dockerhub về
+    working_dir: /var/www/html/project1 # tạo working_dir trên máy ảo
+    container_name: nginx_project1 # đặt tên cho container
+    ports:
+      - "8080:80" # ánh xạ cổng 8080 trên máy thật vào cổng 80 trên máy ảo
+    volumes:
+      - .:/var/www/html/project1  # ánh xạ current folder vào thư mục project1 trên máy ảo
+      - ./docker/logs/nginx_log:/var/log/nginx
+      - ./docker/config/nginx/project1/app.conf:/etc/nginx/conf.d/project1.conf # ánh xạ file config của server nginx từ thư mục config vào máy ảo
+      # - ./config/nginx/project2.conf:/etc/nginx/conf.d/project2.conf
+    links:
+      - php
+      - mysql
+    networks:
+      - app-network
+  php:
+    build:
+      context: ./docker/images
+      dockerfile: PHP.Dockerfile  # gọi tới file PHP.Dockerfile để pull image php-8.1-fpm về. Và run các câu lệnh, cài đặt các package tương tự như ở trên máy thật
+    container_name: php_project1
+    volumes:
+      - .:/var/www/html/project1  # ánh xạ toàn bộ các thư mục vào máy ảo
+      - ./docker/logs/php_fpm_log:/var/log/php-fpm # ánh xạ log
+      - ./docker/config/php-fpm/custom.ini:/usr/local/etc/php/conf.d/custom.ini # ánh xạ custom.ini, việc sử dụng method post có thể bị limit size. File này sẽ custom lại size cho nó
+    networks:
+      - app-network
+
+  mysql:
+    platform: linux/x86_64
+    build:
+      context: ./docker/images
+      dockerfile: MYSQL.Dockerfile  #pull image mysql 5.6
+    container_name: mysql_project1
+    ports:
+      - "3306:3306" #ánh xạ cổng 3306 từ máy thật vào máy ảo
+    volumes:
+      - ./docker/mysql:/docker-entrypoint-initdb.d  #volume data
+    environment:  #các config của file .env được gọi ở đây. Chúng ta nên đặt file docker-compose và file .env cùng cấp để dễ gọi biến.
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      # MYSQL_USER: ${DB_USERNAME}
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    expose:
+      - '3306'
+    restart: unless-stopped
+    networks:
+      - app-network
+networks:
+  app-network:
+    driver: bridge
+```
+

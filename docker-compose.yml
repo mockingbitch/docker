@@ -8,15 +8,15 @@ services:
       - 4.4.4.4
     build:
       context: ./docker/images
-      dockerfile: NGINX.Dockerfile
-    working_dir: /var/www/html/docker-socialnetwork
-    container_name: nginx_socialnetwork
+      dockerfile: NGINX.Dockerfile # gọi tới file NGINX.Dockerfile trong thư mục docker/images để pull image Nginx:latest từ Dockerhub về
+    working_dir: /var/www/html/project1 # tạo working_dir trên máy ảo
+    container_name: nginx_project1 # đặt tên cho container
     ports:
-      - "8080:80"
+      - "8080:80" # ánh xạ cổng 8080 trên máy thật vào cổng 80 trên máy ảo
     volumes:
-      - .:/var/www/html/docker-socialnetwork
+      - .:/var/www/html/project1  # ánh xạ current folder vào thư mục project1 trên máy ảo
       - ./docker/logs/nginx_log:/var/log/nginx
-      - ./docker/config/nginx/socialnetwork/app.conf:/etc/nginx/conf.d/socialnetwork.conf
+      - ./docker/config/nginx/project1/app.conf:/etc/nginx/conf.d/project1.conf # ánh xạ file config của server nginx từ thư mục config vào máy ảo
       # - ./config/nginx/project2.conf:/etc/nginx/conf.d/project2.conf
     links:
       - php
@@ -26,49 +26,35 @@ services:
   php:
     build:
       context: ./docker/images
-      dockerfile: PHP.Dockerfile
-    container_name: php_socialnetwork
+      dockerfile: PHP.Dockerfile  # gọi tới file PHP.Dockerfile để pull image php-8.1-fpm về. Và run các câu lệnh, cài đặt các package tương tự như ở trên máy thật
+    container_name: php_project1
     volumes:
-      - .:/var/www/html/docker-socialnetwork
-      - ./docker/logs/php_fpm_log:/var/log/php-fpm
-      - ./docker/config/php-fpm/custom.ini:/usr/local/etc/php/conf.d/custom.ini
+      - .:/var/www/html/project1  # ánh xạ toàn bộ các thư mục vào máy ảo
+      - ./docker/logs/php_fpm_log:/var/log/php-fpm # ánh xạ log
+      - ./docker/config/php-fpm/custom.ini:/usr/local/etc/php/conf.d/custom.ini # ánh xạ custom.ini, việc sử dụng method post có thể bị limit size. File này sẽ custom lại size cho nó
     networks:
       - app-network
 
-  # mysql:
-  #   build:
-  #     context: ./docker/images
-  #     dockerfile: MYSQL.Dockerfile
-  #   container_name: mysql_socialnetwork
-  #   ports:
-  #     - "3306:3306"
-  #   volumes:
-  #     - ./docker/data/mysql:/var/lib/mysql
-  #   environment:
-  #     MYSQL_DATABASE: ${DB_DATABASE}
-  #     MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
-  #     MYSQL_PASSWORD: ${DB_PASSWORD}
-  #     MYSQL_USER: ${DB_USERNAME}
-  #     SERVICE_TAGS: dev
-  #     SERVICE_NAME: mysql
-  #   expose:
-  #     - '3306'
-  #   restart: unless-stopped
-  #   networks:
-  #     - app-network
   mysql:
-    image: mysql:5.7
-    container_name: mysql_socialnetwork
-    restart: unless-stopped
-    environment:
+    platform: linux/x86_64
+    build:
+      context: ./docker/images
+      dockerfile: MYSQL.Dockerfile  #pull image mysql 5.6
+    container_name: mysql_project1
+    ports:
+      - "3306:3306" #ánh xạ cổng 3306 từ máy thật vào máy ảo
+    volumes:
+      - ./docker/mysql:/docker-entrypoint-initdb.d  #volume data
+    environment:  #các config của file .env được gọi ở đây. Chúng ta nên đặt file docker-compose và file .env cùng cấp để dễ gọi biến.
       MYSQL_DATABASE: ${DB_DATABASE}
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
       MYSQL_PASSWORD: ${DB_PASSWORD}
       # MYSQL_USER: ${DB_USERNAME}
       SERVICE_TAGS: dev
       SERVICE_NAME: mysql
-    volumes:
-      - ./docker/mysql:/docker-entrypoint-initdb.d
+    expose:
+      - '3306'
+    restart: unless-stopped
     networks:
       - app-network
 networks:
